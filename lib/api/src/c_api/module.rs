@@ -2,7 +2,10 @@ use super::bindings::wasm_module_t;
 use crate::bindings::wasm_byte_vec_new;
 use crate::bindings::wasm_byte_vec_new_empty;
 use crate::bindings::wasm_byte_vec_t;
+use crate::bindings::wasm_exporttype_name;
+use crate::bindings::wasm_exporttype_t;
 use crate::bindings::wasm_module_delete;
+use crate::bindings::wasm_module_exports;
 use crate::bindings::wasm_module_new;
 use crate::bindings::wasm_store_new;
 use crate::bindings::wasm_store_t;
@@ -168,6 +171,28 @@ impl Module {
 
     pub fn exports<'a>(&'a self) -> ExportsIterator<impl Iterator<Item = ExportType> + 'a> {
         self.info().exports()
+    }
+    pub unsafe fn module_exports(&self) -> Vec<String> {
+        let module_stuff = {
+            let module_handle = self.handle.inner;
+            let mut vec = Default::default();
+            wasm_module_exports(module_handle.as_ref().unwrap(), &mut vec);
+            vec
+        };
+        let module_exports: &[*mut wasm_exporttype_t] =
+            std::slice::from_raw_parts(module_stuff.data, module_stuff.size);
+        module_exports
+            .iter()
+            .map(|wasm_export| {
+                let wasm_name = wasm_exporttype_name(wasm_export.as_ref().unwrap())
+                    .as_ref()
+                    .unwrap();
+                let wasm_name_slice =
+                    std::slice::from_raw_parts(wasm_name.data as *const u8, wasm_name.size);
+                let the_name = std::str::from_utf8(wasm_name_slice).unwrap();
+                the_name.to_string()
+            })
+            .collect()
     }
 
     pub fn custom_sections<'a>(&'a self, name: &'a str) -> impl Iterator<Item = Box<[u8]>> + 'a {

@@ -109,20 +109,21 @@ impl InstanceHandle {
         let wasm_exports: &[*mut wasm_extern_t] =
             unsafe { std::slice::from_raw_parts(exports.data, exports.size) };
 
-        let exports_ty = module.exports().collect::<Vec<_>>();
+        let exports_ty = unsafe { module.0.module_exports() };
         let exports = exports_ty
             .iter()
             .zip(wasm_exports.into_iter())
-            .map(|(export_type, wasm_export)| {
-                let name = export_type.name();
+            .map(|(name, wasm_export)| {
+                // let name = export_type.name();
                 let mut store = store.as_store_mut();
-                let extern_type = export_type.ty();
+                // let extern_type = export_type.ty();
                 // Annotation is here to prevent spurious IDE warnings.
 
                 let extern_ = Extern::from_vm_extern(&mut store, *wasm_export);
                 (name.to_string(), extern_)
             })
             .collect::<Exports>();
+      
         exports
     }
 }
